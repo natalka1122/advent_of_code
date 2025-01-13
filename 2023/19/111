@@ -1,0 +1,220 @@
+# 118700618008050
+# too high
+
+from __future__ import annotations
+from typing import cast, Union
+import re
+
+# FILENAME = "demo.txt"
+FILENAME = "input.txt"
+
+START_WORKFLOW = "in"
+ACCEPT = "A"
+REJECT = "R"
+X = "x"
+M = "m"
+A = "a"
+S = "s"
+LT = "<"
+GT = ">"
+MIN_VALUE = 1
+MAX_VALUE = 4000 + 1
+COORDS = "xmas"
+Rule = Union[str | tuple[str, str, int, str]]
+
+
+def add_workflow(line: str, workflows: dict[str, list[Rule]]) -> None:
+    name, rules_str = line[:-1].split("{")
+    rules: list[str] = rules_str.split(",")
+    result_rules: list[Rule] = []
+    for i in range(len(rules)):
+        if ":" in rules[i]:
+            rule_match = re.match(r"^(\w+)([<>])(\d+):(\w+)$", rules[i])
+            if rule_match is None:
+                raise NotImplementedError
+            rule = rule_match.groups()
+            if len(rule) != 4:
+                raise NotImplementedError
+            result_rules.append((rule[0], rule[1], int(rule[2]), rule[3]))
+        else:
+            result_rules.append(rules[i])
+    workflows[name] = result_rules
+
+
+# def process_part(
+#     part: tuple[int, int, int, int],
+#     start_workflow: str,
+#     workflows: dict[str, list[Rule]],
+# ) -> bool:
+#     x, m, a, s = part
+#     # x, m, a, s = map(
+#     #     int, re.match(r"^{x=(\d+),m=(\d+),a=(\d+),s=(\d+)}$", part).groups()
+#     # )
+#     # print(
+#     #     f"(x,m,a,s) = {(x,m,a,s)} start_workflow = {start_workflow} :: {workflows[start_workflow]}"
+#     # )
+#     for rule in workflows[start_workflow]:
+#         if isinstance(rule, str):
+#             action = rule
+#             break
+#         else:
+#             action = None
+#             if rule[0] == X:
+#                 value = x
+#             elif rule[0] == M:
+#                 value = m
+#             elif rule[0] == A:
+#                 value = a
+#             elif rule[0] == S:
+#                 value = s
+#             else:
+#                 raise NotImplementedError
+#             if rule[1] == LT and value < int(rule[2]):
+#                 action = rule[3]
+#                 break
+#             if rule[1] == GT and value > int(rule[2]):
+#                 action = rule[3]
+#                 break
+#     if action is None:
+#         raise NotImplementedError
+#     if action == ACCEPT:
+#         return True
+#     if action == REJECT:
+#         return False
+#     return process_part(part, action, workflows)
+
+
+def square(ul: tuple[int, int, int, int], dr: tuple[int, int, int, int]) -> int:
+    result = 1
+    for i in range(4):
+        if ul[i] >= dr[i]:
+            raise NotImplementedError
+        result *= dr[i] - ul[i]
+    print(f"== {result}")
+    return result
+
+
+def calc(
+    ul: tuple[int, int, int, int],
+    dr: tuple[int, int, int, int],
+    rules: list[Rule],
+    workflows: dict[str, list[Rule]],
+):
+    if len(rules) == 0:
+        raise NotImplementedError
+    rule = rules[0]
+    print("*" * 20)
+    print(f"ul = {ul} dr = {dr} rule = {rule} rules = {rules}")
+    result = 0
+    if isinstance(rule, str):
+        if rule == ACCEPT:
+            result += square(ul, dr)
+        elif rule == REJECT:
+            pass
+        else:
+            result += calc(ul, dr, workflows[rule], workflows)
+    elif isinstance(rule, tuple):
+        if rule[0] not in COORDS:
+            raise NotImplementedError
+        coord_index = COORDS.index(rule[0])
+        if rule[1] == LT:
+            if rule[2] <= ul[coord_index]:
+                raise NotImplementedError
+            elif ul[coord_index] < rule[2] < dr[coord_index]:
+                ul1 = ul
+                dr1_list = list(dr)
+                dr1_list[coord_index] = rule[2]
+                dr1 = cast(tuple[int, int, int, int], dr1_list)
+                print(f"for [{ul[coord_index]},{rule[2]}) [{ul1,dr1}) do {rule[3]}")
+                if rule[3] == ACCEPT:
+                    result += square(ul1, dr1)
+                elif rule[3] == REJECT:
+                    pass
+                else:
+                    result += calc(ul1, dr1, workflows[rule[3]], workflows)
+                ul2_list = list(ul)
+                ul2_list[coord_index] = rule[2]
+                ul2 = cast(tuple[int, int, int, int], ul2_list)
+                dr2 = dr
+                print(f"for [{rule[2]},{dr[coord_index]}) [{ul2,dr2}) do next rule")
+                result += calc(ul2, dr2, rules[1:], workflows)
+            elif dr[0] <= rule[2]:
+                if rule[3] == ACCEPT:
+                    result += square(ul, dr)
+                elif rule[3] == REJECT:
+                    pass
+                else:
+                    result += calc(ul, dr, workflows[rule[3]], workflows)
+            else:
+                print(
+                    f"rule[2] = {rule[2]} ul[{coord_index}] = {ul[coord_index]} dr[{coord_index}] = {dr[coord_index]}"
+                )
+                raise NotImplementedError
+        elif rule[1] == GT:
+            if rule[2] + 1 <= ul[coord_index]:
+                raise NotImplementedError
+            elif ul[coord_index] < rule[2] + 1 < dr[coord_index]:
+                ul1 = ul
+                dr1_list = list(dr)
+                dr1_list[coord_index] = rule[2]
+                dr1 = cast(tuple[int, int, int, int], dr1_list)
+                print(f"for [{ul[coord_index]},{rule[2]}) [{ul1,dr1}) do next rule")
+                result += calc(ul1, dr1, rules[1:], workflows)
+                ul2_list = list(ul)
+                ul2_list[coord_index] = rule[2]
+                ul2 = cast(tuple[int, int, int, int], ul2_list)
+                dr2 = dr
+                print(f"for [{rule[2]},{dr[coord_index]}) [{ul2,dr2}) do {rule[3]}")
+                if rule[3] == ACCEPT:
+                    result += square(ul2, dr2)
+                elif rule[3] == REJECT:
+                    pass
+                else:
+                    result += calc(ul2, dr2, workflows[rule[3]], workflows)
+            elif dr[coord_index] <= rule[2] + 1:
+                raise NotImplementedError
+            else:
+                print(
+                    f"rule[2] = {rule[2]} ul[{coord_index}] = {ul[coord_index]} dr[{coord_index}] = {dr[coord_index]}"
+                )
+                raise NotImplementedError
+        else:
+            print(f"rule[1] = {rule[1]}")
+            raise NotImplementedError
+    else:
+        print(f"type(rule) = {type(rule)}")
+        raise NotImplementedError
+    return result
+
+
+def main() -> None:
+    workflows: dict[str, list[Rule]] = dict()
+    with open(FILENAME, "r") as file:
+        for line_ in file:
+            line = line_.strip()
+            if len(line) == 0:
+                break
+            name, rules_str = line[:-1].split("{")
+            workflows[name] = []
+            for rule_str in rules_str.split(","):
+                if ":" in rule_str:
+                    rule_match = re.match(r"^(\w+)([<>])(\d+):(\w+)$", rule_str)
+                    if rule_match is None:
+                        raise NotImplementedError
+                    rule = rule_match.groups()
+                    workflows[name].append((rule[0], rule[1], int(rule[2]), rule[3]))
+                else:
+                    workflows[name].append(rule_str)
+    print(f"workflows = {workflows}")
+    ul = (MIN_VALUE, MIN_VALUE, MIN_VALUE, MIN_VALUE)
+    dr = (MAX_VALUE, MAX_VALUE, MAX_VALUE, MAX_VALUE)
+    # ul[0] <= x < dr[0]
+    # ul[1] <= m < dr[1]
+    # ul[2] <= a < dr[2]
+    # ul[3] <= s < dr[3]
+    print(calc(ul, dr, workflows[START_WORKFLOW], workflows))
+    # print(167409079868000)
+
+
+if __name__ == "__main__":
+    main()
