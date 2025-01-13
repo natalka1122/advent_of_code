@@ -1,0 +1,29 @@
+# 106266128
+# too high
+import re
+
+def f(line):
+    regex = re.compile(r"mul\((\d{1,3}),(\d{1,3})\)|(do)\(\)|(don't)\(\)")
+    result = 0
+    to_do = True
+    for n1, n2, do, dont in regex.findall(line):
+        if do:
+            to_do = True
+        elif dont:
+            to_do = False
+        elif to_do:
+        # print(type(nnn), nnn)
+            result += int(n1)*int(n2)
+        # print(regex.match(mul))
+    return result
+
+def main():
+    result = 0
+    with open('input.txt', 'r') as file:
+    #with open('demo2.txt', 'r') as file:
+        for line in file:
+            result += f(line)
+    print(result)
+
+if __name__ == "__main__":
+    main()

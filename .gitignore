@@ -1,6 +1,9 @@
 # Ignore input files
 input.txt
 
+# Ignore certain images
+2024/14/image*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
