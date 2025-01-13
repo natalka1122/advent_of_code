@@ -1,0 +1,60 @@
+# 211
+# too low
+import re
+
+FILENAME = "demo2.txt"  # expected 3
+FILENAME = "input.txt"
+
+
+def check(line: str) -> bool:
+    line_match1 = re.search(r".*([a-z])([a-z])\1.*\[.*\2\1\2.*\].*", line)
+    if line_match1 is not None and line_match1.group(1) != line_match1.group(2):
+        print(f"case 1: {line}")
+        return True
+    line_match1 = re.search(r".*\[([a-z])([a-z])\1.*\].*\2\1\2.*", line)
+    if line_match1 is not None and line_match1.group(1) != line_match1.group(2):
+        print(f"case 2: {line}")
+        return True
+    return False
+
+
+def f(line: str) -> bool:
+    odd = set()
+    is_odd = True
+    current = ""
+    for symbol in line:
+        if symbol == "[":
+            if not is_odd:
+                raise NotImplementedError
+            odd.add(check(current))
+            current = ""
+            is_odd = False
+        elif symbol == "]":
+            if is_odd:
+                raise NotImplementedError
+            if check(current):
+                return False
+            current = ""
+            is_odd = True
+        elif "a" <= symbol <= "z":
+            current += symbol
+        else:
+            raise NotImplementedError
+    if not is_odd:
+        raise NotImplementedError
+    if current:
+        odd.add(check(current))
+    return any(odd)
+
+
+def main() -> None:
+    result = 0
+    with open(FILENAME, "r") as file:
+        for line in file:
+            if check(line.strip()):
+                result += 1
+    print(result)
+
+
+if __name__ == "__main__":
+    main()
