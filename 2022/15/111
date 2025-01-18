@@ -1,0 +1,56 @@
+# 10151913246563
+# too low
+import re
+
+FILENAME, MAX_COORD = "demo.txt", 20  # expected 56000011
+FILENAME, MAX_COORD = "input.txt", 4000000
+
+
+def main() -> None:
+    result = set()
+    # for x in range(MAX_COORD):
+    #     if x % 10 == 0 :
+    #         print(x)
+    #     for y in range(MAX_COORD):
+    #         pass
+    lines = []
+    with open(FILENAME, "r") as file:
+        for line in file:
+            line_match = re.match(
+                r"Sensor at x=(-?\d+), y=(-?\d+): closest beacon is at x=(-?\d+), y=(-?\d+)",
+                line.strip(),
+            )
+            if line_match is None:
+                raise NotImplementedError
+            lines.append(tuple(map(int, line_match.groups())))
+    lines.sort()
+    for y in range(MAX_COORD):
+        cuts = []
+        for sx, sy, bx, by in lines:
+            dist = abs(sx - bx) + abs(sy - by)
+            if dist >= abs(sy - y):
+                # print(sx, sy, bx, by)
+                c1 = max(0, sx - dist + abs(sy - y))
+                c2 = min(MAX_COORD, sx + dist - abs(sy - y))
+                if c1 > c2:
+                    continue
+                if len(cuts) == 0:
+                    cuts.append((c1, c2))
+                else:
+                    if c1 <= cuts[-1][1] + 1:
+                        cuts[-1] = cuts[-1][0], max(cuts[-1][1], c2)
+                    else:
+                        cuts.append((c1, c2))
+                        print(y, c1 - 1)
+                        print((c1 - 1) * 4000000 + y)
+                        return
+        # print(y, cuts)
+    #         for x in range(sx - dist + abs(sy - y), sx + dist - abs(sy - y)):
+    #             result.add(x)
+    # # print(result)
+    # result = set(filter(lambda x: 0<=x<MAX_COORD, result))
+    # print(len(result))
+
+
+if __name__ == "__main__":
+    main()
