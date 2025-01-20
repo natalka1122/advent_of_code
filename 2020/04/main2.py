@@ -1,0 +1,99 @@
+import re
+
+FILENAME = "demo2_1.txt"  # expected 0
+FILENAME = "demo2_2.txt"  # expected 4
+FILENAME = "input.txt"
+FIELDS = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
+
+
+def f(passport: set[str]) -> bool:
+    for field in FIELDS:
+        if field not in passport:
+            print(f"There is no valid {field}")
+            return False
+    print("Valid")
+    return True
+
+
+def check_byr(line: str) -> bool:
+    line_match = re.match(r"^byr:(\d{4})$", line)
+    if line_match is None:
+        return False
+    return 1920 <= int(line_match.group(1)) <= 2002
+
+
+def check_iyr(line: str) -> bool:
+    line_match = re.match(r"^iyr:(\d{4})$", line)
+    if line_match is None:
+        return False
+    return 2010 <= int(line_match.group(1)) <= 2020
+
+
+def check_eyr(line: str) -> bool:
+    line_match = re.match(r"^eyr:(\d{4})$", line)
+    if line_match is None:
+        return False
+    return 2020 <= int(line_match.group(1)) <= 2030
+
+
+def check_hgt(line: str) -> bool:
+    line_match = re.match(r"^hgt:((\d+)in|(\d+)cm)$", line)
+    if line_match is None:
+        return False
+    if line_match.group(2) is not None:
+        return 59 <= int(line_match.group(2)) <= 76
+    if line_match.group(3) is not None:
+        return 150 <= int(line_match.group(3)) <= 193
+    return False
+
+
+def check_hcl(line: str) -> bool:
+    line_match = re.match(r"^hcl:#[0-9a-f]{6}$", line)
+    return line_match is not None
+
+
+def check_ecl(line: str) -> bool:
+    line_match = re.match(r"^ecl:(amb|blu|brn|gry|grn|hzl|oth)$", line)
+    return line_match is not None
+
+
+def check_pid(line: str) -> bool:
+    line_match = re.match(r"^pid:\d{9}$", line)
+    return line_match is not None
+
+
+def main() -> None:
+    result = 0
+    current_passport: set[str] = set()
+    with open(FILENAME, "r") as file:
+        for line in file:
+            if len(line) == 1:
+                if f(current_passport):
+                    result += 1
+                current_passport = set()
+            else:
+                print(line.strip())
+                for part in line.strip().split(" "):
+                    for name, func in [
+                        ("byr", check_byr),
+                        ("iyr", check_iyr),
+                        ("eyr", check_eyr),
+                        ("hgt", check_hgt),
+                        ("hcl", check_hcl),
+                        ("ecl", check_ecl),
+                        ("pid", check_pid),
+                    ]:
+                        if f"{name}:" in part:
+                            if func(part):
+                                current_passport.add(name)
+                            else:
+                                print(f"{name} is broken")
+                                current_passport = set()
+                            break
+    if f(current_passport):
+        result += 1
+    print(result)
+
+
+if __name__ == "__main__":
+    main()
