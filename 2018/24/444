@@ -1,0 +1,234 @@
+# 3477
+# too high
+import functools
+import re
+
+FILENAME = "demo.txt"  # expected 51
+FILENAME = "input.txt"
+
+MAX_BOOST = 1000000
+
+
+class GroupUnit:
+    def __init__(
+        self,
+        units: int,
+        health: int,
+        attack_hit: int,
+        attack_type: str,
+        initiative: int,
+        weak_to: set[str],
+        immune_to: set[str],
+        is_p1: bool,
+    ):
+        self.units = units
+        self._units_init = units
+        self._health = health
+        self._attack_hit = attack_hit
+        self._attack_type = attack_type
+        self._initiative = initiative
+        self._weak_to = weak_to
+        self._immune_to = immune_to
+        self._is_p1 = is_p1
+        self._boost = 0
+
+    def __repr__(self) -> str:
+        result = {"units": self.units, "health": self.health,"is_p1":self.is_p1}
+        return str(result)
+
+    def reset_and_boost(self, boost: int) -> None:
+        self.units = self._units_init
+        self._boost = boost
+
+    @property
+    def effective_power(self) -> int:
+        return self.units * self.attack_hit
+
+    @property
+    def attack_hit(self) -> int:
+        return self._attack_hit + self._boost
+
+    @property
+    def attack_type(self) -> str:
+        return self._attack_type
+
+    @property
+    def initiative(self) -> int:
+        return self._initiative
+
+    @property
+    def is_p1(self) -> bool:
+        return self._is_p1
+
+    @property
+    def immune_to(self) -> set[str]:
+        return self._immune_to
+
+    @property
+    def weak_to(self) -> set[str]:
+        return self._weak_to
+
+    @property
+    def health(self) -> int:
+        return self._health
+
+    def got_attacked(self, damage: int) -> bool:
+        if self.units == 0:
+            raise NotImplementedError
+        killed_units = damage // self.health
+        if killed_units == 0:
+            return False
+        else:
+            self.units = max(0, self.units - killed_units)
+            return True
+
+
+@functools.cache
+def fight(boost: int, group_units: tuple[GroupUnit]) -> tuple[bool, int]:
+    for group_unit in group_units:
+        if group_unit.is_p1:
+            group_unit.reset_and_boost(boost)
+        else:
+            group_unit.reset_and_boost(0)
+    has_changed = True
+    while any(map(lambda x: x.is_p1 and x.units > 0, group_units)) and any(
+        map(lambda x: not x.is_p1 and x.units > 0, group_units)
+    ):
+        has_changed = False
+        chosen_attack: dict[GroupUnit, GroupUnit | None] = dict()
+        chosen_targets: set[GroupUnit] = set()
+        for group_unit1 in sorted(group_units, key=lambda x: (-x.effective_power, -x.initiative)):
+            best_target: GroupUnit | None = None
+            best_damage = 0
+            for group_unit2 in filter(
+                lambda x: x.is_p1 != group_unit1.is_p1
+                and group_unit1.attack_type not in x.immune_to
+                and x not in chosen_targets,
+                group_units,
+            ):
+                if group_unit1.attack_type in group_unit2.weak_to:
+                    current_damage = 2 * group_unit1.effective_power
+                else:
+                    current_damage = group_unit1.effective_power
+                if current_damage < group_unit1.health:
+                    continue
+                choose_me = False
+                if best_target is None:
+                    choose_me = True
+                elif current_damage > best_damage:
+                    choose_me = True
+                elif current_damage == best_damage:
+                    if best_target.effective_power < group_unit2.effective_power:
+                        choose_me = True
+                    elif best_target.effective_power == group_unit2.effective_power:
+                        if best_target.initiative < group_unit2.initiative:
+                            choose_me = True
+                if choose_me:
+                    best_damage = current_damage
+                    best_target = group_unit2
+            if best_target is None or best_damage == 0:
+                chosen_attack[group_unit1] = None
+            else:
+                chosen_attack[group_unit1] = best_target
+                chosen_targets.add(best_target)
+        for group_unit in sorted(group_units, key=lambda x: -x.initiative):
+            enemy_unit = chosen_attack[group_unit]
+            if enemy_unit is None or group_unit.units == 0 or enemy_unit.units == 0:
+                continue
+            if group_unit.attack_type in enemy_unit.weak_to:
+                current_damage = 2 * group_unit.effective_power
+            else:
+                current_damage = group_unit.effective_power
+            if enemy_unit.got_attacked(current_damage):
+                has_changed = True
+        # print(has_changed)
+        if not has_changed:
+            if all(map(lambda x: x.units == 0, group_units)):
+                raise NotImplementedError
+            print("stalemate")
+            # return True,33
+            # break
+            return False, 0
+    # print(has_changed)
+    if any(map(lambda x: x.is_p1 and x.units > 0, group_units)):
+        return True, sum(
+            map(lambda x: x.units, filter(lambda x: x.is_p1 and x.units > 0, group_units))
+        )
+    else:
+        return False, 0
+
+
+def bisection(a: int, b: int, group_units: tuple[GroupUnit]) -> int:
+    if b - a < 1 or fight(a, group_units)[0] == fight(b, group_units)[0]:
+        raise NotImplementedError
+    while b - a > 1:
+        # Find middle point
+        c = (a + b) // 2
+        print(f"a = {a} b = {b} c = {c}")
+
+        # Decide the side to repeat the steps
+        if fight(c, group_units)[0] != fight(a, group_units)[0]:
+            b = c
+        else:
+            a = c
+    print(f"The value of root is : {b}")
+    return fight(b, group_units)[1]
+
+
+def main() -> None:
+    group_units_list: list[GroupUnit] = []
+    is_p1: bool | None = None
+    with open(FILENAME, "r") as file:
+        for line in file:
+            if line.startswith("Immune System"):
+                is_p1 = True
+            elif line.startswith("Infection"):
+                is_p1 = False
+            elif len(line) == 1:
+                pass
+            else:
+                if is_p1 is None:
+                    raise NotImplementedError
+                line_match = re.match(
+                    r"(\d+) units each with (\d+) hit points (\(.*\) )?with an attack that does (\d+) (\w+) damage at initiative (\d+)",
+                    line,
+                )
+                if line_match is None:
+                    print(line)
+                    raise NotImplementedError
+                weak_to: set[str] = set()
+                immune_to: set[str] = set()
+                if line_match.group(3) is not None:
+                    for elem in map(
+                        lambda x: x.split(" ", 2), line_match.group(3).strip()[1:-1].split("; ")
+                    ):
+                        if elem[0] == "weak":
+                            target_set = weak_to
+                        elif elem[0] == "immune":
+                            target_set = immune_to
+                        else:
+                            raise NotImplementedError
+                        for item in elem[2].split(", "):
+                            target_set.add(item)
+                group_units_list.append(
+                    GroupUnit(
+                        units=int(line_match.group(1)),
+                        health=int(line_match.group(2)),
+                        attack_hit=int(line_match.group(4)),
+                        attack_type=line_match.group(5),
+                        initiative=int(line_match.group(6)),
+                        weak_to=weak_to,
+                        immune_to=immune_to,
+                        is_p1=is_p1,
+                    )
+                )
+    group_units = tuple(group_units_list)
+    min_v = 0
+    max_v = MAX_BOOST
+    print(bisection(min_v, max_v, group_units))
+    # for i in sorted([MAX_BOOST, 0, 1570, 1569,300 ,200,100,150,200,175,190,180,185,183,184,19,20,21,22]):
+    #     print(i, fight(i, group_units))
+
+
+if __name__ == "__main__":
+    main()

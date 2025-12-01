@@ -1,0 +1,143 @@
+import re
+
+FILENAME = "demo.txt"  # expected 5216
+FILENAME = "input.txt"
+
+
+class GroupUnit:
+    def __init__(
+        self,
+        units: int,
+        health: int,
+        attack_hit: int,
+        attack_type: str,
+        initiative: int,
+        weak_to: set[str],
+        immune_to: set[str],
+        is_p1: bool,
+    ):
+        self.units = units
+        self.health = health
+        self.attack_hit = attack_hit
+        self.attack_type = attack_type
+        self.initiative = initiative
+        self.weak_to = weak_to
+        self.immune_to = immune_to
+        self.is_p1 = is_p1
+
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
+    @property
+    def effective_power(self) -> int:
+        return self.units * self.attack_hit
+
+    def got_attacked(self, damage: int) -> None:
+        self.units = max(0, self.units - damage // self.health)
+
+
+def main() -> None:
+    group_units: list[GroupUnit] = []
+    is_p1: bool | None = None
+    with open(FILENAME, "r") as file:
+        for line in file:
+            if line.startswith("Immune System"):
+                is_p1 = True
+            elif line.startswith("Infection"):
+                is_p1 = False
+            elif len(line) == 1:
+                pass
+            else:
+                if is_p1 is None:
+                    raise NotImplementedError
+                line_match = re.match(
+                    r"(\d+) units each with (\d+) hit points (\(.*\) )?with an attack that does (\d+) (\w+) damage at initiative (\d+)",
+                    line,
+                )
+                if line_match is None:
+                    print(line)
+                    raise NotImplementedError
+                weak_to: set[str] = set()
+                immune_to: set[str] = set()
+                if line_match.group(3) is not None:
+                    for elem in map(
+                        lambda x: x.split(" ", 2), line_match.group(3).strip()[1:-1].split("; ")
+                    ):
+                        if elem[0] == "weak":
+                            target_set = weak_to
+                        elif elem[0] == "immune":
+                            target_set = immune_to
+                        else:
+                            raise NotImplementedError
+                        for item in elem[2].split(", "):
+                            target_set.add(item)
+                group_units.append(
+                    GroupUnit(
+                        units=int(line_match.group(1)),
+                        health=int(line_match.group(2)),
+                        attack_hit=int(line_match.group(4)),
+                        attack_type=line_match.group(5),
+                        initiative=int(line_match.group(6)),
+                        weak_to=weak_to,
+                        immune_to=immune_to,
+                        is_p1=is_p1,
+                    )
+                )
+    while any(map(lambda x: x.is_p1, group_units)) and any(map(lambda x: not x.is_p1, group_units)):
+        chosen_attack: dict[GroupUnit, GroupUnit | None] = dict()
+        chosen_targets: set[GroupUnit] = set()
+        for group_unit1 in sorted(group_units, key=lambda x: (-x.effective_power, -x.initiative)):
+            best_target: GroupUnit | None = None
+            best_damage = 0
+            for group_unit2 in filter(
+                lambda x: x.is_p1 != group_unit1.is_p1
+                and group_unit1.attack_type not in x.immune_to
+                and x not in chosen_targets,
+                group_units,
+            ):
+                if group_unit1.attack_type in group_unit2.weak_to:
+                    current_damage = 2 * group_unit1.effective_power
+                else:
+                    current_damage = group_unit1.effective_power
+                choose_me = False
+                if best_target is None:
+                    choose_me = True
+                elif current_damage > best_damage:
+                    choose_me = True
+                elif current_damage == best_damage:
+                    if best_target.effective_power < group_unit2.effective_power:
+                        choose_me = True
+                    elif best_target.effective_power == group_unit2.effective_power:
+                        if best_target.initiative < group_unit2.initiative:
+                            choose_me = True
+                if choose_me:
+                    best_damage = current_damage
+                    best_target = group_unit2
+            if best_target is None or best_damage == 0:
+                chosen_attack[group_unit1] = None
+            else:
+                chosen_attack[group_unit1] = best_target
+                chosen_targets.add(best_target)
+        for group_unit in sorted(group_units, key=lambda x: -x.initiative):
+            enemy_unit = chosen_attack[group_unit]
+            if enemy_unit is None or group_unit.units == 0:
+                continue
+            if group_unit.attack_type in enemy_unit.weak_to:
+                current_damage = 2 * group_unit.effective_power
+            else:
+                current_damage = group_unit.effective_power
+            enemy_unit.got_attacked(current_damage)
+        has_changed = True
+        while has_changed:
+            has_changed = False
+            for index in range(len(group_units)):
+                if group_units[index].units == 0:
+                    group_units.pop(index)
+                    has_changed = True
+                    break
+        print(group_units)
+    print(sum(map(lambda x: x.units, group_units)))
+
+
+if __name__ == "__main__":
+    main()
