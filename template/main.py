@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 FILENAME = "demo.txt"
 # FILENAME = "input.txt"
 
