@@ -4,21 +4,21 @@ FILENAME = "input.txt"
 
 def main() -> None:
     reds: list[tuple[int, int]] = []
-    y_set: set[float] = set()
-    x_set: set[float] = set()
+    y_set: set[int] = set()
+    x_set: set[int] = set()
     with open(FILENAME, "r") as file:
         for line in file:
             y, x = map(int, line.strip().split(","))
             y_set.add(y)
-            y_set.add(y + 0.5)
-            y_set.add(y - 0.5)
+            y_set.add(y + 1)
+            y_set.add(y - 1)
             x_set.add(x)
-            x_set.add(x - 0.5)
-            x_set.add(x + 0.5)
+            x_set.add(x - 1)
+            x_set.add(x + 1)
             reds.append((y, x))
     y_list = sorted(y_set)
     x_list = sorted(x_set)
-    border: set[tuple[float, float]] = set()
+    border: set[tuple[int, int]] = set()
     for i in range(-1, len(reds) - 1):
         y0 = min(reds[i][0], reds[i + 1][0])
         y1 = max(reds[i][0], reds[i + 1][0])
@@ -27,8 +27,9 @@ def main() -> None:
         for y_ in y_list[y_list.index(y0) : y_list.index(y1) + 1]:
             for x_ in x_list[x_list.index(x0) : x_list.index(x1) + 1]:
                 border.add((y_, x_))
-    outside_set: set[tuple[float, float]] = set([(y_list[0], x_list[0])])
-    Q: set[tuple[float, float]] = set([(y_list[0], x_list[0])])
+
+    outside_set: set[tuple[int, int]] = set([(y_list[0], x_list[0])])
+    Q: set[tuple[int, int]] = set([(y_list[0], x_list[0])])
     while len(Q) > 0:
         current = Q.pop()
         if current not in outside_set:
@@ -42,6 +43,7 @@ def main() -> None:
                     continue
                 Q.add(coord)
                 outside_set.add(coord)
+
     best = 0
     for i in range(len(reds)):
         for j in range(i):
